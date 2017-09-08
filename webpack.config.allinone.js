@@ -22,25 +22,25 @@ var UglifyJsPlugin = webpack.optimize.UglifyJsPlugin
 
 //入口文件定义
 var entries = function () {
-    var jsDir = path.resolve(srcDir, 'js')
-    var entryFiles = glob.sync(jsDir + '/*.{js,jsx}')
+    var jsDir = path.resolve(srcDir, 'js');
+    var entryFiles = glob.sync(jsDir + '/**/*.{js,jsx}', {ignore: jsDir + '/lib/**/*.js'});
     var map = {};
 
     for (var i = 0; i < entryFiles.length; i++) {
         var filePath = entryFiles[i];
-        var filename = filePath.substring(filePath.lastIndexOf('\/') + 1, filePath.lastIndexOf('.'));
+        var filename = filePath.substring(filePath.indexOf('js/') + 3, filePath.lastIndexOf('.'));
         map[filename] = filePath;
     }
     return map;
 }
 //html_webpack_plugins 定义
-var html_plugins = function () {
-    var entryHtml = glob.sync(srcDir + '/*.html')
+var html_plugins = function (debug) {
+    var entryHtml = glob.sync(srcDir + '/**/*.html')
     var r = []
     var entriesFiles = entries()
     for (var i = 0; i < entryHtml.length; i++) {
         var filePath = entryHtml[i];
-        var filename = filePath.substring(filePath.lastIndexOf('\/') + 1, filePath.lastIndexOf('.'));
+        var filename = filePath.substring(filePath.indexOf('src/') + 4, filePath.lastIndexOf('.'));
         var conf = {
             template: 'html!' + filePath,
             filename: filename + '.html'
@@ -49,6 +49,7 @@ var html_plugins = function () {
         if (filename in entriesFiles) {
             conf.inject = 'body'
             conf.chunks = ['vendor', filename]
+            if (!debug) conf.hash = true;
         }
         //跨页面引用，如pageA,pageB 共同引用了common-a-b.js，那么可以在这单独处理
         //if(pageA|pageB.test(filename)) conf.chunks.splice(1,0,'common-a-b')
@@ -65,17 +66,19 @@ module.exports = function(options){
 
     var extractCSS;
     var cssLoader;
-    var sassLoader;
+    var lessLoader;
 
     plugins.push(new CommonsChunkPlugin({
         name: 'vendor',
         minChunks: Infinity
     }));
 
+
+
     if(debug){
         extractCSS = new ExtractTextPlugin('css/[name].css?[contenthash]')
         cssLoader = extractCSS.extract(['css'])
-        sassLoader = extractCSS.extract(['css', 'sass'])
+        lessLoader = extractCSS.extract(['css', 'less'])
 
         plugins.push(extractCSS)
     }else{
@@ -84,7 +87,7 @@ module.exports = function(options){
             allChunks: false
         })
         cssLoader = extractCSS.extract(['css?minimize'])
-        sassLoader = extractCSS.extract(['css?minimize', 'sass'])
+        lessLoader = extractCSS.extract(['css?minimize', 'less'])
 
         plugins.push(
             extractCSS,
@@ -132,16 +135,16 @@ module.exports = function(options){
                 },
                 {test: /\.(tpl|ejs)$/, loader: 'ejs'},
                 {test: /\.css$/, loader: cssLoader},
-                {test: /\.scss$/, loader: sassLoader}
+                {test: /\.less/, loader: lessLoader}
             ]
         },
         resolve: {
-            extensions: ['', '.js', '.css', '.scss', '.tpl', '.png', '.jpg'],
+            extensions: ['', '.js', '.css', '.less', '.tpl', '.png', '.jpg'],
             root: [srcDir, nodeModPath],
             alias: pathMap,
             publicPath: '/'
         },
-        plugins: plugins.concat(html_plugins())
+        plugins: plugins.concat(html_plugins(debug))
     }
 
     return config;
