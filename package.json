@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "server": "webpack-dev-server --inline",
+    "server": "gulp server",
     "build": "gulp pack --env debug",
     "build-online": "gulp pack --env production",
     "deploy": "gulp deploy --env debug",
